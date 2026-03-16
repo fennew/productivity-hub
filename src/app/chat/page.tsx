@@ -171,43 +171,43 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${tas
   }
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-5rem)] flex gap-4">
-      {/* Conversation Sidebar */}
-      <div className="w-64 shrink-0 glass-card flex flex-col">
-        <div className="p-3 border-b border-zinc-800">
+    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] flex flex-col md:flex-row gap-4">
+      {/* Conversation Sidebar - hidden on mobile, shown as horizontal scroll */}
+      <div className="md:w-64 shrink-0 glass-card flex flex-col max-md:flex-row max-md:overflow-x-auto max-md:max-h-14">
+        <div className="p-2 md:p-3 md:border-b border-zinc-800 shrink-0">
           <button
             onClick={() => addConversation()}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap md:w-full"
           >
-            <Plus size={16} />
+            <Plus size={14} />
             New Chat
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex md:flex-col flex-1 overflow-x-auto md:overflow-y-auto p-1 md:p-2 gap-1 md:space-y-1">
           {conversations.map((conv) => (
             <button
               key={conv.id}
               onClick={() => setActiveConversation(conv.id)}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                "text-left px-3 py-2 rounded-lg text-xs md:text-sm truncate transition-colors whitespace-nowrap shrink-0 md:w-full",
                 conv.id === activeConversationId
                   ? "bg-zinc-800 text-white"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
               )}
             >
-              {conv.messages[0]?.content?.substring(0, 30) || conv.title}
+              {conv.messages[0]?.content?.substring(0, 25) || conv.title}
             </button>
           ))}
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 glass-card flex flex-col">
+      <div className="flex-1 glass-card flex flex-col min-h-0">
         {/* Model Selector */}
-        <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+        <div className="p-2 md:p-3 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot size={18} className="text-blue-400" />
-            <span className="text-sm font-medium">AI Chat</span>
+            <Bot size={16} className="text-blue-400" />
+            <span className="text-xs md:text-sm font-medium">AI Chat</span>
           </div>
           <div className="relative">
             <button
@@ -240,15 +240,14 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${tas
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
           {!activeConversation || activeConversation.messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center h-full">
-              <div className="text-center">
-                <Bot size={48} className="text-zinc-700 mx-auto mb-3" />
-                <p className="text-zinc-500 text-sm">Start a conversation with your AI assistant</p>
+              <div className="text-center px-4">
+                <Bot size={40} className="text-zinc-700 mx-auto mb-3 md:w-12 md:h-12" />
+                <p className="text-zinc-500 text-sm">Start a conversation</p>
                 <p className="text-zinc-600 text-xs mt-2">Try: &quot;Add a task to call the dentist tomorrow&quot;</p>
-                <p className="text-zinc-600 text-xs">or: &quot;Create a project for my website redesign with 5 tasks&quot;</p>
-                <p className="text-zinc-600 text-xs">or: Paste a list of items and ask to organize them</p>
+                <p className="text-zinc-600 text-xs">or: &quot;Create a project with tasks&quot;</p>
               </div>
             </div>
           ) : (
@@ -264,7 +263,7 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${tas
                 )}
                 <div
                   className={cn(
-                    "max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
+                    "max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 md:py-2.5 text-sm",
                     msg.role === "user" ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-200"
                   )}
                 >
@@ -293,15 +292,15 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${tas
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t border-zinc-800">
+        <div className="p-2 md:p-3 border-t border-zinc-800">
           <div className="flex gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Ask anything, create tasks, or paste a list to organize into a project..."
-              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              placeholder="Ask anything or create tasks..."
+              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 md:px-4 py-2.5 text-sm outline-none focus:border-blue-500"
               disabled={loading}
             />
             <button

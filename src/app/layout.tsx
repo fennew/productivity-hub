@@ -14,6 +14,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#09090b",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -26,8 +30,10 @@ export default function RootLayout({
       <body className={`${inter.className} bg-zinc-950 text-white antialiased`}>
         <Sidebar />
         <Header />
-        <main className="ml-64 pt-14 min-h-screen transition-all duration-300">
-          <div className="p-6">{children}</div>
+        {/* Mobile: no left margin, bottom padding for nav bar */}
+        {/* Desktop: left margin for sidebar */}
+        <main className="md:ml-64 pt-14 pb-20 md:pb-0 min-h-screen transition-all duration-300">
+          <div className="p-4 md:p-6">{children}</div>
         </main>
       </body>
     </html>

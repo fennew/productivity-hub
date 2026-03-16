@@ -190,18 +190,28 @@ export default function TasksPage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Tasks</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            {tasks.filter((t) => t.status !== "done" && t.status !== "cancelled").length} open tasks
-            {" \u00b7 "}
-            {projects.filter((p) => p.status === "active").length} projects
-          </p>
+      <div className="mb-4 md:mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">Tasks</h1>
+            <p className="text-xs md:text-sm text-zinc-400 mt-0.5">
+              {tasks.filter((t) => t.status !== "done" && t.status !== "cancelled").length} open
+              {" \u00b7 "}
+              {projects.filter((p) => p.status === "active").length} projects
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowTaskForm(!showTaskForm); setShowProjectForm(false); setShowBulkForm(false); }}
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Task</span>
+          </button>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Action bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {/* View mode toggles */}
-          <div className="flex bg-zinc-800 rounded-lg overflow-hidden">
+          <div className="flex bg-zinc-800 rounded-lg overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode("list")}
               className={cn("p-2 transition-colors", viewMode === "list" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white")}
@@ -226,24 +236,17 @@ export default function TasksPage() {
           </div>
           <button
             onClick={() => { setShowProjectForm(!showProjectForm); setShowTaskForm(false); }}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap shrink-0"
           >
-            <FolderPlus size={16} />
-            New Project
+            <FolderPlus size={14} />
+            <span className="hidden sm:inline">New</span> Project
           </button>
           <button
             onClick={() => { setShowBulkForm(!showBulkForm); setShowTaskForm(false); setShowProjectForm(false); }}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap shrink-0"
           >
-            <List size={16} />
+            <List size={14} />
             Bulk Add
-          </button>
-          <button
-            onClick={() => { setShowTaskForm(!showTaskForm); setShowProjectForm(false); setShowBulkForm(false); }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Add Task
           </button>
         </div>
       </div>
@@ -700,7 +703,7 @@ function TaskRow({
   return (
     <div
       className={cn(
-        "glass-card p-4 flex items-center gap-4 group",
+        "glass-card p-3 md:p-4 flex items-start md:items-center gap-3 md:gap-4 group",
         task.status === "done" && "opacity-50"
       )}
     >
@@ -710,7 +713,7 @@ function TaskRow({
             ? updateTask(task.id, { status: "todo", completed_at: undefined })
             : completeTask(task.id)
         }
-        className="shrink-0"
+        className="shrink-0 mt-0.5 md:mt-0"
       >
         {task.status === "done" ? (
           <CheckCircle2 size={20} className="text-green-500" />
@@ -720,13 +723,37 @@ function TaskRow({
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={cn("text-sm font-medium truncate", task.status === "done" && "line-through text-zinc-500")}>
-          {task.title}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className={cn("text-sm font-medium", task.status === "done" && "line-through text-zinc-500")}>
+            {task.title}
+          </p>
+          {/* Mobile: always show delete, Desktop: show on hover */}
+          <button
+            onClick={() => deleteTask(task.id)}
+            className="text-zinc-600 hover:text-red-400 transition-colors md:opacity-0 md:group-hover:opacity-100 shrink-0"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
         {task.description && (
           <p className="text-xs text-zinc-500 mt-0.5 truncate">{task.description}</p>
         )}
-        <div className="flex gap-2 mt-1 flex-wrap">
+        <div className="flex gap-1.5 md:gap-2 mt-1.5 flex-wrap items-center">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${getPriorityColor(task.priority)}`} />
+          {showDate && task.due_date && (
+            <span
+              className={cn(
+                "text-[11px]",
+                task.due_date < todayStr && task.status !== "done"
+                  ? "text-red-400"
+                  : task.due_date === todayStr
+                  ? "text-blue-400"
+                  : "text-zinc-500"
+              )}
+          >
+            {task.due_date === todayStr ? "Today" : task.due_date}
+          </span>
+        )}
           {task.project && (
             <span
               className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1"
@@ -750,50 +777,29 @@ function TaskRow({
             </span>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-3 shrink-0">
-        <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-        {showDate && task.due_date && (
-          <span
-            className={cn(
-              "text-xs",
-              task.due_date < todayStr && task.status !== "done"
-                ? "text-red-400"
-                : task.due_date === todayStr
-                ? "text-blue-400"
-                : "text-zinc-500"
-            )}
+        {/* Controls row - visible on mobile, hover on desktop */}
+        <div className="flex gap-2 mt-2 md:mt-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          <select
+            value={task.project || ""}
+            onChange={(e) => updateTask(task.id, { project: e.target.value || undefined })}
+            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] md:text-xs outline-none max-w-[120px]"
           >
-            {task.due_date === todayStr ? "Today" : task.due_date}
-          </span>
-        )}
-        <select
-          value={task.project || ""}
-          onChange={(e) => updateTask(task.id, { project: e.target.value || undefined })}
-          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs outline-none opacity-0 group-hover:opacity-100 transition-opacity max-w-[100px]"
-        >
-          <option value="">No project</option>
-          {projects.filter((p) => p.status === "active").map((p) => (
-            <option key={p.id} value={p.name}>{p.name}</option>
-          ))}
-        </select>
-        <select
-          value={task.status}
-          onChange={(e) => updateTask(task.id, { status: e.target.value as TaskStatus })}
-          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs outline-none opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <option value="todo">To Do</option>
-          <option value="in_progress">In Progress</option>
-          <option value="done">Done</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <button
-          onClick={() => deleteTask(task.id)}
-          className="text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <Trash2 size={14} />
-        </button>
+            <option value="">No project</option>
+            {projects.filter((p) => p.status === "active").map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+          <select
+            value={task.status}
+            onChange={(e) => updateTask(task.id, { status: e.target.value as TaskStatus })}
+            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] md:text-xs outline-none"
+          >
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
       </div>
     </div>
   );
