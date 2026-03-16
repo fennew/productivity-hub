@@ -7,6 +7,17 @@ export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 export type RecurrenceType = "daily" | "weekly" | "monthly" | "yearly";
 export type IntegrationType = "gmail" | "notion" | "google_sheets" | "telegram";
 
+// ---- Projects ----
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  status: "active" | "completed" | "archived";
+  created_at: string;
+  updated_at: string;
+}
+
 // ---- Tasks ----
 export interface Task {
   id: string;

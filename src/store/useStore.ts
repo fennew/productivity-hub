@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   Task,
+  Project,
   CalendarEvent,
   Habit,
   HabitLog,
@@ -14,6 +15,12 @@ import type {
 import { generateId } from "@/lib/utils";
 
 interface AppState {
+  // Projects
+  projects: Project[];
+  addProject: (project: Omit<Project, "id" | "created_at" | "updated_at">) => string;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+
   // Tasks
   tasks: Task[];
   addTask: (task: Omit<Task, "id" | "created_at" | "updated_at">) => void;
@@ -73,6 +80,40 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
+      // ---- Projects ----
+      projects: [],
+      addProject: (project) => {
+        const id = generateId();
+        set((state) => ({
+          projects: [
+            ...state.projects,
+            {
+              ...project,
+              id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        }));
+        return id;
+      },
+      updateProject: (id, updates) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+          ),
+        })),
+      deleteProject: (id) =>
+        set((state) => ({
+          projects: state.projects.filter((p) => p.id !== id),
+          // Clear project reference from tasks
+          tasks: state.tasks.map((t) =>
+            t.project === state.projects.find((p) => p.id === id)?.name
+              ? { ...t, project: undefined }
+              : t
+          ),
+        })),
+
       // ---- Tasks ----
       tasks: [],
       addTask: (task) =>
@@ -284,6 +325,7 @@ export const useStore = create<AppState>()(
     {
       name: "productivity-hub-storage",
       partialize: (state) => ({
+        projects: state.projects,
         tasks: state.tasks,
         events: state.events,
         habits: state.habits,

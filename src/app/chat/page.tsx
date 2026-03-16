@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Plus, Bot, User, Settings2, Loader2, CheckSquare } from "lucide-react";
+import { Send, Plus, Bot, User, Settings2, Loader2 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { AVAILABLE_MODELS } from "@/lib/openrouter";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,9 @@ export default function ChatPage() {
     addMessage,
     setActiveConversation,
     addTask,
+    addProject,
     tasks,
+    projects,
   } = useStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,25 +43,46 @@ export default function ChatPage() {
     addMessage(convId, { role: "user", content: userMessage });
     setLoading(true);
 
-    // Build current tasks context for the AI
+    // Build context
     const openTasks = tasks.filter((t) => t.status !== "done" && t.status !== "cancelled");
     const taskContext = openTasks.length > 0
-      ? `\n\nCurrent open tasks:\n${openTasks.map((t) => `- ${t.title}${t.due_date ? ` (due: ${t.due_date})` : ""}${t.priority !== "medium" ? ` [${t.priority}]` : ""}`).join("\n")}`
+      ? `\n\nCurrent open tasks:\n${openTasks.map((t) => `- ${t.title}${t.due_date ? ` (due: ${t.due_date})` : ""}${t.priority !== "medium" ? ` [${t.priority}]` : ""}${t.project ? ` [project: ${t.project}]` : ""}`).join("\n")}`
       : "\n\nNo open tasks currently.";
 
-    const systemPrompt = `You are a helpful productivity assistant built into a personal dashboard app. Help the user manage tasks, plan their day, track habits, and stay organized. Be concise and actionable.
+    const projectContext = projects.length > 0
+      ? `\n\nExisting projects:\n${projects.filter((p) => p.status === "active").map((p) => `- ${p.name}${p.description ? `: ${p.description}` : ""}`).join("\n")}`
+      : "\n\nNo projects created yet.";
 
-When the user asks you to create/add a task, respond with a JSON block that the app can parse:
+    const systemPrompt = `You are a helpful productivity assistant built into a personal dashboard app. Help the user manage tasks, projects, plan their day, track habits, and stay organized. Be concise and actionable.
+
+TASK CREATION:
+When the user asks you to create/add a task, respond with a JSON block:
 \`\`\`task
-{"title": "task title", "due_date": "YYYY-MM-DD", "priority": "low|medium|high|urgent"}
+{"title": "task title", "due_date": "YYYY-MM-DD", "priority": "low|medium|high|urgent", "project": "project name or empty string"}
 \`\`\`
 
-You can include multiple task blocks. Always also include a brief text response.
+PROJECT CREATION:
+When the user asks you to create a project, or when you receive a list of tasks/data that logically belong together, create a project first:
+\`\`\`project
+{"name": "Project Name", "description": "Brief description", "color": "#hex"}
+\`\`\`
+Available colors: #3b82f6 (blue), #8b5cf6 (purple), #ec4899 (pink), #f59e0b (amber), #10b981 (green), #06b6d4 (cyan), #f97316 (orange), #ef4444 (red), #6366f1 (indigo), #14b8a6 (teal)
 
-Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
+SMART GROUPING:
+If the user provides multiple tasks, a file, a list, or data that seems related to one topic/goal, you SHOULD:
+1. Create a project for them first using \`\`\`project block
+2. Then create all tasks with the project field set to that project name
+3. Only do this if the tasks clearly relate to each other. If tasks are unrelated, don't force them into a project.
+
+IMPORTANT:
+- You can include multiple task blocks and project blocks in one response.
+- Always put \`\`\`project blocks BEFORE \`\`\`task blocks that reference them.
+- If a suitable existing project already exists, assign tasks to it instead of creating a new one.
+- Always include a brief friendly text response alongside the blocks.
+
+Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${taskContext}`;
 
     try {
-      // Get the conversation messages BEFORE we added the new user message
       const previousMessages = activeConversation?.messages || [];
 
       const response = await fetch("/api/chat", {
@@ -78,9 +101,31 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
       const data = await response.json();
       const assistantContent = data.choices?.[0]?.message?.content || "Sorry, I could not generate a response. Try a different model.";
 
-      // Parse task blocks from the response
-      const taskRegex = /```task\s*\n?([\s\S]*?)```/g;
+      // Parse project blocks first
+      const projectRegex = /```project\s*\n?([\s\S]*?)```/g;
       let match;
+      const createdProjects: string[] = [];
+      while ((match = projectRegex.exec(assistantContent)) !== null) {
+        try {
+          const projectData = JSON.parse(match[1]);
+          // Check if project already exists
+          const exists = projects.some((p) => p.name.toLowerCase() === projectData.name.toLowerCase());
+          if (!exists) {
+            addProject({
+              name: projectData.name,
+              description: projectData.description || "",
+              color: projectData.color || "#3b82f6",
+              status: "active",
+            });
+            createdProjects.push(projectData.name);
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+
+      // Parse task blocks
+      const taskRegex = /```task\s*\n?([\s\S]*?)```/g;
       const createdTasks: string[] = [];
       while ((match = taskRegex.exec(assistantContent)) !== null) {
         try {
@@ -90,6 +135,7 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
             status: "todo",
             priority: taskData.priority || "medium",
             due_date: taskData.due_date,
+            project: taskData.project || undefined,
             tags: ["ai-created"],
             auto_reschedule: true,
             source: "manual",
@@ -100,10 +146,17 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
         }
       }
 
-      // Clean task blocks from displayed message and append confirmation
-      let displayContent = assistantContent.replace(/```task\s*\n?[\s\S]*?```\n?/g, "").trim();
+      // Clean blocks from displayed message and append confirmation
+      let displayContent = assistantContent
+        .replace(/```project\s*\n?[\s\S]*?```\n?/g, "")
+        .replace(/```task\s*\n?[\s\S]*?```\n?/g, "")
+        .trim();
+
+      if (createdProjects.length > 0) {
+        displayContent += `\n\n\ud83d\udcc1 Created project${createdProjects.length > 1 ? "s" : ""}:\n${createdProjects.map((p) => `\u2022 ${p}`).join("\n")}`;
+      }
       if (createdTasks.length > 0) {
-        displayContent += `\n\n✅ Created ${createdTasks.length} task${createdTasks.length > 1 ? "s" : ""}:\n${createdTasks.map((t) => `• ${t}`).join("\n")}`;
+        displayContent += `\n\n\u2705 Created ${createdTasks.length} task${createdTasks.length > 1 ? "s" : ""}:\n${createdTasks.map((t) => `\u2022 ${t}`).join("\n")}`;
       }
 
       addMessage(convId!, { role: "assistant", content: displayContent, model: selectedModel });
@@ -194,7 +247,8 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
                 <Bot size={48} className="text-zinc-700 mx-auto mb-3" />
                 <p className="text-zinc-500 text-sm">Start a conversation with your AI assistant</p>
                 <p className="text-zinc-600 text-xs mt-2">Try: &quot;Add a task to call the dentist tomorrow&quot;</p>
-                <p className="text-zinc-600 text-xs">or: &quot;What tasks do I have this week?&quot;</p>
+                <p className="text-zinc-600 text-xs">or: &quot;Create a project for my website redesign with 5 tasks&quot;</p>
+                <p className="text-zinc-600 text-xs">or: Paste a list of items and ask to organize them</p>
               </div>
             </div>
           ) : (
@@ -246,7 +300,7 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Ask anything, or say 'add task: ...' to create a task"
+              placeholder="Ask anything, create tasks, or paste a list to organize into a project..."
               className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
               disabled={loading}
             />
