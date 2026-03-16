@@ -30,7 +30,7 @@ If no tasks are found, return an empty array. Only extract clear, actionable tas
           content: transcript,
         },
       ],
-      "meta-llama/llama-3.1-8b-instruct:free",
+      "openai/gpt-4o-mini",
       { temperature: 0.3 }
     );
 

@@ -32,7 +32,11 @@ interface AppState {
   habits: Habit[];
   habitLogs: HabitLog[];
   addHabit: (habit: Omit<Habit, "id" | "created_at">) => void;
+  updateHabit: (id: string, updates: Partial<Habit>) => void;
+  deleteHabit: (id: string) => void;
   logHabit: (habitId: string, date: string) => void;
+  unlogHabit: (habitId: string, date: string) => void;
+  toggleHabitDay: (habitId: string, date: string) => void;
 
   // Finances
   transactions: Transaction[];
@@ -41,6 +45,8 @@ interface AppState {
   // Gym
   workouts: Workout[];
   addWorkout: (workout: Omit<Workout, "id" | "created_at">) => void;
+  updateWorkout: (id: string, updates: Partial<Workout>) => void;
+  deleteWorkout: (id: string) => void;
 
   // Voice Notes
   voiceNotes: VoiceNote[];
@@ -127,6 +133,17 @@ export const useStore = create<AppState>()(
             { ...habit, id: generateId(), created_at: new Date().toISOString() },
           ],
         })),
+      updateHabit: (id, updates) =>
+        set((state) => ({
+          habits: state.habits.map((h) =>
+            h.id === id ? { ...h, ...updates } : h
+          ),
+        })),
+      deleteHabit: (id) =>
+        set((state) => ({
+          habits: state.habits.filter((h) => h.id !== id),
+          habitLogs: state.habitLogs.filter((l) => l.habit_id !== id),
+        })),
       logHabit: (habitId, date) =>
         set((state) => {
           const existing = state.habitLogs.find(
@@ -143,6 +160,32 @@ export const useStore = create<AppState>()(
             habitLogs: [
               ...state.habitLogs,
               { id: generateId(), habit_id: habitId, date, count: 1 },
+            ],
+          };
+        }),
+      unlogHabit: (habitId, date) =>
+        set((state) => ({
+          habitLogs: state.habitLogs.filter(
+            (l) => !(l.habit_id === habitId && l.date === date)
+          ),
+        })),
+      toggleHabitDay: (habitId, date) =>
+        set((state) => {
+          const existing = state.habitLogs.find(
+            (l) => l.habit_id === habitId && l.date === date
+          );
+          if (existing) {
+            // Remove it (toggle off)
+            return {
+              habitLogs: state.habitLogs.filter((l) => l.id !== existing.id),
+            };
+          }
+          // Add it (toggle on)
+          const habit = state.habits.find((h) => h.id === habitId);
+          return {
+            habitLogs: [
+              ...state.habitLogs,
+              { id: generateId(), habit_id: habitId, date, count: habit?.target_count ?? 1 },
             ],
           };
         }),
@@ -166,6 +209,14 @@ export const useStore = create<AppState>()(
             { ...workout, id: generateId(), created_at: new Date().toISOString() },
           ],
         })),
+      updateWorkout: (id, updates) =>
+        set((state) => ({
+          workouts: state.workouts.map((w) =>
+            w.id === id ? { ...w, ...updates } : w
+          ),
+        })),
+      deleteWorkout: (id) =>
+        set((state) => ({ workouts: state.workouts.filter((w) => w.id !== id) })),
 
       // ---- Voice Notes ----
       voiceNotes: [],

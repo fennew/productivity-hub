@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Plus, Bot, User, Settings2, Loader2 } from "lucide-react";
+import { Send, Plus, Bot, User, Settings2, Loader2, CheckSquare } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { AVAILABLE_MODELS } from "@/lib/openrouter";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,8 @@ export default function ChatPage() {
     addConversation,
     addMessage,
     setActiveConversation,
+    addTask,
+    tasks,
   } = useStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,21 +41,34 @@ export default function ChatPage() {
     addMessage(convId, { role: "user", content: userMessage });
     setLoading(true);
 
+    // Build current tasks context for the AI
+    const openTasks = tasks.filter((t) => t.status !== "done" && t.status !== "cancelled");
+    const taskContext = openTasks.length > 0
+      ? `\n\nCurrent open tasks:\n${openTasks.map((t) => `- ${t.title}${t.due_date ? ` (due: ${t.due_date})` : ""}${t.priority !== "medium" ? ` [${t.priority}]` : ""}`).join("\n")}`
+      : "\n\nNo open tasks currently.";
+
+    const systemPrompt = `You are a helpful productivity assistant built into a personal dashboard app. Help the user manage tasks, plan their day, track habits, and stay organized. Be concise and actionable.
+
+When the user asks you to create/add a task, respond with a JSON block that the app can parse:
+\`\`\`task
+{"title": "task title", "due_date": "YYYY-MM-DD", "priority": "low|medium|high|urgent"}
+\`\`\`
+
+You can include multiple task blocks. Always also include a brief text response.
+
+Today's date is ${new Date().toISOString().split("T")[0]}.${taskContext}`;
+
     try {
+      // Get the conversation messages BEFORE we added the new user message
+      const previousMessages = activeConversation?.messages || [];
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [
-            {
-              role: "system",
-              content:
-                "You are a helpful productivity assistant. Help the user manage tasks, plan their day, track habits, and stay organized. Be concise and actionable.",
-            },
-            ...(activeConversation?.messages || []).map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            { role: "system", content: systemPrompt },
+            ...previousMessages.map((m) => ({ role: m.role, content: m.content })),
             { role: "user", content: userMessage },
           ],
           model: selectedModel,
@@ -61,12 +76,41 @@ export default function ChatPage() {
       });
 
       const data = await response.json();
-      const assistantMessage = data.choices?.[0]?.message?.content || "Sorry, I could not generate a response.";
-      addMessage(convId!, { role: "assistant", content: assistantMessage, model: selectedModel });
+      const assistantContent = data.choices?.[0]?.message?.content || "Sorry, I could not generate a response. Try a different model.";
+
+      // Parse task blocks from the response
+      const taskRegex = /```task\s*\n?([\s\S]*?)```/g;
+      let match;
+      const createdTasks: string[] = [];
+      while ((match = taskRegex.exec(assistantContent)) !== null) {
+        try {
+          const taskData = JSON.parse(match[1]);
+          addTask({
+            title: taskData.title,
+            status: "todo",
+            priority: taskData.priority || "medium",
+            due_date: taskData.due_date,
+            tags: ["ai-created"],
+            auto_reschedule: true,
+            source: "manual",
+          });
+          createdTasks.push(taskData.title);
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+
+      // Clean task blocks from displayed message and append confirmation
+      let displayContent = assistantContent.replace(/```task\s*\n?[\s\S]*?```\n?/g, "").trim();
+      if (createdTasks.length > 0) {
+        displayContent += `\n\n✅ Created ${createdTasks.length} task${createdTasks.length > 1 ? "s" : ""}:\n${createdTasks.map((t) => `• ${t}`).join("\n")}`;
+      }
+
+      addMessage(convId!, { role: "assistant", content: displayContent, model: selectedModel });
     } catch (error) {
       addMessage(convId!, {
         role: "assistant",
-        content: "Error: Failed to get response. Check your API key and try again.",
+        content: "Error: Failed to get response. Check your API key in .env.local and try again.",
       });
     } finally {
       setLoading(false);
@@ -79,9 +123,7 @@ export default function ChatPage() {
       <div className="w-64 shrink-0 glass-card flex flex-col">
         <div className="p-3 border-b border-zinc-800">
           <button
-            onClick={() => {
-              addConversation();
-            }}
+            onClick={() => addConversation()}
             className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={16} />
@@ -127,10 +169,7 @@ export default function ChatPage() {
                 {AVAILABLE_MODELS.map((model) => (
                   <button
                     key={model.id}
-                    onClick={() => {
-                      setSelectedModel(model.id);
-                      setShowModelPicker(false);
-                    }}
+                    onClick={() => { setSelectedModel(model.id); setShowModelPicker(false); }}
                     className={cn(
                       "w-full text-left px-3 py-2 text-xs hover:bg-zinc-800 transition-colors flex items-center justify-between",
                       model.id === selectedModel && "text-blue-400"
@@ -154,7 +193,8 @@ export default function ChatPage() {
               <div className="text-center">
                 <Bot size={48} className="text-zinc-700 mx-auto mb-3" />
                 <p className="text-zinc-500 text-sm">Start a conversation with your AI assistant</p>
-                <p className="text-zinc-600 text-xs mt-1">Ask for help with tasks, planning, or anything else</p>
+                <p className="text-zinc-600 text-xs mt-2">Try: &quot;Add a task to call the dentist tomorrow&quot;</p>
+                <p className="text-zinc-600 text-xs">or: &quot;What tasks do I have this week?&quot;</p>
               </div>
             </div>
           ) : (
@@ -171,9 +211,7 @@ export default function ChatPage() {
                 <div
                   className={cn(
                     "max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
-                    msg.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : "bg-zinc-800 text-zinc-200"
+                    msg.role === "user" ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-200"
                   )}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -194,9 +232,7 @@ export default function ChatPage() {
               <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center shrink-0">
                 <Loader2 size={14} className="text-blue-400 animate-spin" />
               </div>
-              <div className="bg-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400">
-                Thinking...
-              </div>
+              <div className="bg-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400">Thinking...</div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -210,7 +246,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Type a message..."
+              placeholder="Ask anything, or say 'add task: ...' to create a task"
               className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
               disabled={loading}
             />
