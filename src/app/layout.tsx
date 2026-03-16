@@ -27,13 +27,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-zinc-950 text-white antialiased`}>
+      <body className={`${inter.className} bg-zinc-950 text-white antialiased overflow-x-hidden`}>
         <Sidebar />
         <Header />
-        {/* Mobile: no left margin, bottom padding for nav bar */}
-        {/* Desktop: left margin for sidebar */}
-        <main className="md:ml-64 pt-14 pb-20 md:pb-0 min-h-screen transition-all duration-300">
-          <div className="p-4 md:p-6">{children}</div>
+        <main className="pt-14 pb-20 md:pb-0 min-h-screen transition-all duration-300 md:ml-64 w-full md:w-auto">
+          <div className="px-3 py-4 md:p-6 max-w-full overflow-x-hidden">{children}</div>
         </main>
       </body>
     </html>

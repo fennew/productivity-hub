@@ -188,7 +188,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto w-full overflow-hidden">
       {/* Header */}
       <div className="mb-4 md:mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -344,15 +344,15 @@ export default function TasksPage() {
               rows={6}
               autoFocus
             />
-            <div className="flex items-center justify-between">
+            <div className="space-y-2">
               <span className="text-xs text-zinc-500">
                 {bulkText.split("\n").filter((l) => l.trim()).length} task{bulkText.split("\n").filter((l) => l.trim()).length !== 1 ? "s" : ""} to add
               </span>
-              <div className="flex gap-3">
+              <div className="flex gap-2 flex-wrap">
                 <select
                   value={bulkPriority}
                   onChange={(e) => setBulkPriority(e.target.value as Priority)}
-                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none"
+                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none flex-1 min-w-[100px]"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -364,13 +364,13 @@ export default function TasksPage() {
                     type="date"
                     value={bulkDate}
                     onChange={(e) => setBulkDate(e.target.value)}
-                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none"
+                    className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none flex-1 min-w-[120px]"
                   />
                 )}
                 <select
                   value={bulkProject}
                   onChange={(e) => setBulkProject(e.target.value)}
-                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none"
+                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none flex-1 min-w-[100px]"
                 >
                   <option value="">No project</option>
                   {projects.filter((p) => p.status === "active").map((p) => (
@@ -465,11 +465,11 @@ export default function TasksPage() {
               className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 resize-none"
               rows={2}
             />
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               <select
                 value={newTask.priority}
                 onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Priority })}
-                className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none"
+                className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none flex-1 min-w-[100px]"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -600,13 +600,13 @@ export default function TasksPage() {
       )}
 
       {/* Status Filters */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-1.5 md:gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
         {(["all", "todo", "in_progress", "done", "cancelled"] as const).map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              "px-2.5 md:px-3 py-1.5 rounded-lg text-[11px] md:text-xs font-medium transition-colors whitespace-nowrap shrink-0",
               filterStatus === status
                 ? "bg-blue-600/20 text-blue-400 border border-blue-600/30"
                 : "text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800"

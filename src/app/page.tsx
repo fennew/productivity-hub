@@ -73,7 +73,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto w-full overflow-hidden">
       {/* Greeting */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-xl md:text-2xl font-bold">

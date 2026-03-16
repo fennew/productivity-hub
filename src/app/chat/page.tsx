@@ -171,7 +171,7 @@ Today's date is ${new Date().toISOString().split("T")[0]}.${projectContext}${tas
   }
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] flex flex-col md:flex-row gap-4">
+    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] flex flex-col md:flex-row gap-2 md:gap-4 w-full overflow-hidden">
       {/* Conversation Sidebar - hidden on mobile, shown as horizontal scroll */}
       <div className="md:w-64 shrink-0 glass-card flex flex-col max-md:flex-row max-md:overflow-x-auto max-md:max-h-14">
         <div className="p-2 md:p-3 md:border-b border-zinc-800 shrink-0">
